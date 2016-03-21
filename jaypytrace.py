@@ -95,11 +95,6 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 		dist_intersect_final = min(dist_intersect_1, dist_intersect_2)
 		intersect_location = dist_intersect_final * camera_vector + camera_origin
 		
-		#print dist_intersect_1, dist_intersect_2, camera_vector, camera_origin, dist_intersect_final
-		#print dist_intersect_2
-		#print camera_vector
-		#print intersect_location
-		
 		#Next Get the vector from the light source to the intersect location
 		light_origin = np.array([lightsource.x, lightsource.y, lightsource.z])
 		light_vector = intersect_location - light_origin
@@ -117,7 +112,6 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 			return 0
 		else:
 			# Calculate the dot product of the light vector bounced off the sphere and the vector to the camera
-			
 			# Light Reflection using Sphere's normal vector
 			sphere_normal = intersect_location - sphere_origin
 			sphere_normal = sphere_normal / np.linalg.norm(sphere_normal)
@@ -143,13 +137,7 @@ image_one = captureplane(0.0,0.0,0.0, 3.0, 3.0, 200.0, 0.0, 1.0, 0.0)
 
 img = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1,3),'uint8')
 
-
-#imgr = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1))
-#imgg = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1))
-#imgb = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1))
-
 ### I know I need to optimize the iteration with pandas/numpy iterators, will get working first...
-
 for row in xrange(0, img.shape[0]):
 	for col in xrange(0, img.shape[1]):
 		
