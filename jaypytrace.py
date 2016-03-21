@@ -112,6 +112,7 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 			return 0
 		else:
 			# Calculate the dot product of the light vector bounced off the sphere and the vector to the camera
+			
 			# Light Reflection using Sphere's normal vector
 			sphere_normal = intersect_location - sphere_origin
 			sphere_normal = sphere_normal / np.linalg.norm(sphere_normal)
@@ -131,21 +132,24 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 				return 0
 
 ### Initialize the first light source, sphere, and capture plane
-light_one = lightsource(100.0,150.0,220.0,1.0,0.5,0.5,0.25)
-sphere_one = sphere(2.0,0.0,3.0,0.0,1.0)
-image_one = captureplane(0.0,0.0,0.0, 3.0, 3.0, 200.0, 0.0, 1.0, 0.0)
+light_one = lightsource(120.0,200.0,250.0,1.0,0.1,0.1,0.1)
+sphere_one = sphere(8.0,0.0,10.0,0.0,1.0)
+image_one = captureplane(0.0,0.0,0.0, 10.0, 10.0, 100.0, 0.0, 1.0, 0.0)
 
 img = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1,3),'uint8')
 
 ### I know I need to optimize the iteration with pandas/numpy iterators, will get working first...
 for row in xrange(0, img.shape[0]):
+	# Progress in 5% intervals (assuming width = height)
+	if row % round((image_one.width * image_one.linearpixeldensity + 1)/200) == 0:
+		print (row /(image_one.width * image_one.linearpixeldensity + 1)*100), "% Complete"
+		
 	for col in xrange(0, img.shape[1]):
 		
 		# Calculate the image value
 		img[row, col, 0] = pixelvalue(row, col, light_one, sphere_one, image_one, 'red')
 		img[row, col, 1] = pixelvalue(row, col, light_one, sphere_one, image_one, 'green')
 		img[row, col, 2] = pixelvalue(row, col, light_one, sphere_one, image_one, 'blue')
-		#print imgr[row, col]
 
 img_file = Image.fromarray(img)
 img_file.save('sphere.jpeg')
