@@ -132,16 +132,16 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 				return 0
 
 ### Initialize the first light source, sphere, and capture plane
-light_one = lightsource(120.0,200.0,250.0,1.0,0.1,0.1,0.1)
-sphere_one = sphere(8.0,0.0,10.0,0.0,1.0)
-image_one = captureplane(0.0,0.0,0.0, 10.0, 10.0, 100.0, 0.0, 1.0, 0.0)
+light_one = lightsource(100.0,220.0,220.0,1.0,-1,-2,0.1)
+sphere_one = sphere(6.0,0.0,10.0,0.0,1.0)
+image_one = captureplane(0.0,0.0,0.0, 8.0, 8.0, 1000.0, 0.0, 1.0, 0.0)
 
 img = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1,3),'uint8')
 
 ### I know I need to optimize the iteration with pandas/numpy iterators, will get working first...
 for row in xrange(0, img.shape[0]):
 	# Progress in 5% intervals (assuming width = height)
-	if row % round((image_one.width * image_one.linearpixeldensity + 1)/200) == 0:
+	if row % round((image_one.width * image_one.linearpixeldensity + 1)/1000) == 0:
 		print (row /(image_one.width * image_one.linearpixeldensity + 1)*100), "% Complete"
 		
 	for col in xrange(0, img.shape[1]):
