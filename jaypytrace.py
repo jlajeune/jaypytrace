@@ -160,4 +160,4 @@ for row in xrange(0, img.shape[0]):
 		#print imgr[row, col]
 
 img_file = Image.fromarray(img)
-img_file.save('myimg.jpeg')
+img_file.save('sphere.jpeg')
