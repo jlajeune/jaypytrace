@@ -65,8 +65,6 @@ class captureplane:
 		self.camvy = camvy
 		self.camvz = camvz
 
-###
-
 def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 
 	###	Determine Pixel Value
@@ -92,7 +90,9 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 		# Determine Intersection Point of camera_vector and sphere
 		dist_intersect_1 = (-(np.dot(camera_vector,(camera_origin-sphere_origin))) + math.sqrt(np.square(np.dot(camera_vector,(camera_origin-sphere_origin))) - (np.linalg.norm(camera_origin - sphere_origin) ** 2) + (sphere.radius ** 2)))
 		dist_intersect_2 = (-(np.dot(camera_vector,(camera_origin-sphere_origin))) - math.sqrt(np.square(np.dot(camera_vector,(camera_origin-sphere_origin))) - (np.linalg.norm(camera_origin - sphere_origin) ** 2) + (sphere.radius ** 2)))
-		dist_intersect_final = min(dist_intersect_1, dist_intersect_2)
+		#dist_intersect_final = min(dist_intersect_1, dist_intersect_2)
+		dist_intersect_final = dist_intersect_2
+		#print dist_intersect_1, dist_intersect_2, dist_intersect_final
 		intersect_location = dist_intersect_final * camera_vector + camera_origin
 		
 		#Next Get the vector from the light source to the intersect location
@@ -109,47 +109,70 @@ def pixelvalue(row, col, lightsource, sphere, captureplane, color):
 		
 		# If the closest point to the light isn't the point visible to the camera, in shadow
 		if abs(np.linalg.norm(light_min_location - intersect_location)) > .001:
-			return 0
+			#Include for ambient lighting
+			total_intensity = 0.2
+			if color == 'red':
+				return total_intensity  * lightsource.red
+			elif color == 'green':
+				return total_intensity * lightsource.green
+			elif color == 'blue':
+				return total_intensity  * lightsource.blue
+			else:
+				return 0
 		else:
-			# Calculate the dot product of the light vector bounced off the sphere and the vector to the camera
-			
+		
 			# Light Reflection using Sphere's normal vector
-			sphere_normal = intersect_location - sphere_origin
+			sphere_normal = sphere_origin - light_min_location
 			sphere_normal = sphere_normal / np.linalg.norm(sphere_normal)
-			light_reflection = light_vector - 2 * (np.dot(light_vector, sphere_normal))*sphere_normal
-			light_intensity = -np.dot(light_reflection, camera_vector) * sphere.emissivity
+			light_reflection = light_vector - (2 *(np.dot(light_vector, sphere_normal)) * sphere_normal)
+			light_intensity = np.dot(light_reflection, -camera_vector) * sphere.emissivity * lightsource.intensity
 			
-			if light_intensity < 0:
-				light_intensity = 0
+			# For the equation y(x) = k*A^x	- b, the light intensity equation will be solved for case where y(-1)=0 and y(1)=1. 
+			# I did this exponential equation think to scale a range of -1 through 1, to 0 through 1. From some trial and error I liked a k of 0.05
+			k = 0.05 #Constant to the exponential equation for scaling the output of the light/camera dot product
+			light_intensity = k * (((math.sqrt(4 * (k ** 2) + 1)+1)/(2 * k)) ** light_intensity) - k /(((math.sqrt(4 * (k ** 2) + 1)+1)/(2 * k)))
+			
+			#Add for ambient lighting
+			total_intensity = light_intensity + 0.2
+			
+			#In case the ambient lighting puts you over the edge
+			if total_intensity > 1:
+				total_intensity = 1
+			
 			
 			if color == 'red':
-				return light_intensity * lightsource.red
+				return total_intensity * lightsource.red
 			elif color == 'green':
-				return light_intensity * lightsource.green
+				return total_intensity * lightsource.green
 			elif color == 'blue':
-				return light_intensity * lightsource.blue
+				return total_intensity  * lightsource.blue
 			else:
 				return 0
 
 ### Initialize the first light source, sphere, and capture plane
-light_one = lightsource(100.0,220.0,220.0,1.0,-1,-2,0.1)
-sphere_one = sphere(6.0,0.0,10.0,0.0,1.0)
-image_one = captureplane(0.0,0.0,0.0, 8.0, 8.0, 1000.0, 0.0, 1.0, 0.0)
+light_one = lightsource(0.0,0.0,0.0,1.0,-10.2,0.3,10.1)
+light_two = lightsource(0.0,0.0,240.0,1.0,10.1,0.1,-10.1)
+light_three = lightsource(0.0,240.0,200.0,1.0,-10.1,0.1,10.1)
+sphere_one = sphere(4.0,0.0,10.0,0.0,1.0)
+image_one = captureplane(0.0,0.0,0.0, 8.0, 8.0, 100.0, 0.0, 1.0, 0.0)
 
 img = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1,3),'uint8')
+img2 = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1,3),'uint8')
 
 ### I know I need to optimize the iteration with pandas/numpy iterators, will get working first...
 for row in xrange(0, img.shape[0]):
 	# Progress in 5% intervals (assuming width = height)
-	if row % round((image_one.width * image_one.linearpixeldensity + 1)/1000) == 0:
+	if row % round((image_one.width * image_one.linearpixeldensity + 1)/200) == 0:
 		print (row /(image_one.width * image_one.linearpixeldensity + 1)*100), "% Complete"
 		
 	for col in xrange(0, img.shape[1]):
 		
 		# Calculate the image value
-		img[row, col, 0] = pixelvalue(row, col, light_one, sphere_one, image_one, 'red')
-		img[row, col, 1] = pixelvalue(row, col, light_one, sphere_one, image_one, 'green')
-		img[row, col, 2] = pixelvalue(row, col, light_one, sphere_one, image_one, 'blue')
+		#img[row, col, 1] = pixelvalue_debug2(row, col, light_one, sphere_one, image_one, 'green')
+		img[row, col, 0] = min(pixelvalue(row, col, light_one, sphere_one, image_one, 'red') + pixelvalue(row, col, light_two, sphere_one, image_one, 'red') + pixelvalue(row, col, light_three, sphere_one, image_one, 'red'), 255)
+		img[row, col, 1] = min(pixelvalue(row, col, light_one, sphere_one, image_one, 'green') + pixelvalue(row, col, light_two, sphere_one, image_one, 'green') + pixelvalue(row, col, light_three, sphere_one, image_one, 'green'), 255)
+		img[row, col, 2] = min(pixelvalue(row, col, light_one, sphere_one, image_one, 'blue') + pixelvalue(row, col, light_two, sphere_one, image_one, 'blue') + pixelvalue(row, col, light_three, sphere_one, image_one, 'blue'), 255)
+		#print img[row,col,0],img[row,col,1], row, col
 
 img_file = Image.fromarray(img)
-img_file.save('sphere.jpeg')
+img_file.save('sphere_test.jpeg')
