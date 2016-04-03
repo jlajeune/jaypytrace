@@ -196,11 +196,11 @@ num_reflect = 1
 # Initialize Image
 img = np.zeros((image_one.width * image_one.linearpixeldensity + 1, image_one.height * image_one.linearpixeldensity + 1,3),'uint8')
 
-### I know I need to optimize the iteration with pandas/numpy iterators, will get working first...
+### Iterate through capture image plane
 
 for row in xrange(0, img.shape[0]):
 
-	# Progress in 5% intervals (assuming width = height)
+	# Progress in 10% intervals (assuming width = height)
 	if row % round((image_one.width * image_one.linearpixeldensity + 1)/10) == 0:
 		print (row /(image_one.width * image_one.linearpixeldensity + 1)*100), "% Complete"
 		
