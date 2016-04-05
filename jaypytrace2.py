@@ -54,9 +54,10 @@ class sphere:
 	def intersection(self, vector, origin):
 		#Need to define intersection logic for a sphere, only return closest
 		
-		camera_vector = vector
-		camera_origin = origin
-		sphere_origin = (self.x, self.y, self.z)
+		camera_vector = np.array(vector)
+		camera_origin = np.array(origin)
+		sphere_origin = np.array((self.x, self.y, self.z))
+ 
 		# Determine Intersection Point of camera_vector and sphere
 		dist_intersect_1 = (-(np.dot(camera_vector,(camera_origin-sphere_origin))) + math.sqrt(np.square(np.dot(camera_vector,(camera_origin-sphere_origin))) - (np.linalg.norm(camera_origin - sphere_origin) ** 2) + (self.radius ** 2)))
 		dist_intersect_2 = (-(np.dot(camera_vector,(camera_origin-sphere_origin))) - math.sqrt(np.square(np.dot(camera_vector,(camera_origin-sphere_origin))) - (np.linalg.norm(camera_origin - sphere_origin) ** 2) + (self.radius ** 2)))
@@ -67,14 +68,15 @@ class sphere:
 		
 		return intersect_location
 	
-	def reflection(self, vector, origin):
+	def reflection(self, vector, origin, intersection):
 	
 		#Return ray object reflected off sphere
 		sphere_origin = (self.x, self.y, self.z)
+		sphere_normal = list(np.array(sphere_origin) - np.array(intersection))
 		sphere_normal = sphere_normal / np.linalg.norm(sphere_normal)
 		reflection = vector - (2 *(np.dot(vector, sphere_normal)) * sphere_normal)
 		
-		return ray(reflection[0],reflection[1],reflection[2])
+		return ray(intersection[0],intersection[1],intersection[2],reflection[0],reflection[1],reflection[2])
 		
 	
 	def does_intersect(self, vector, origin):
@@ -84,15 +86,15 @@ class sphere:
 		camera_vector = vector
 		camera_origin = origin
 		sphere_origin = (self.x, self.y, self.z)
-		
-		t_0 = np.dot(camera_vector,(sphere_origin - camera_origin))/(np.dot(camera_vector,camera_vector))
-		sphere_distance = sphere_origin - (camera_origin + t_0 * camera_vector)
+
+		t_0 = np.dot(camera_vector,((np.array(sphere_origin)-np.array(camera_origin))))/(np.dot(camera_vector,camera_vector))
+		sphere_distance = np.array(sphere_origin) - (np.array(camera_origin) + t_0 * np.array(camera_vector))
 		sphere_distance_mag = np.linalg.norm(sphere_distance)
 		
 		if sphere_distance_mag <= self.radius:
 			return 1
 		else:
-			return 2
+			return 0
 		
 # Capture Plane
 # Properties:
@@ -144,10 +146,10 @@ class captureplane:
 		self.camvz = camvz
 		
 	def get_origin(self):
-		return (x,y,z)
+		return (self.x,self.y,self.z)
 	
 	def get_vector(self):
-		return (camvx, camvy, camvz)
+		return (self.camvx, self.camvy, self.camvz)
 		
 class intersection:
 	def __init__(self, location, objname):
@@ -156,13 +158,7 @@ class intersection:
 	
 	#Find distance from give point and intersection
 	def distance(self, point):
-		pass
-		
-	def get_origin(self):
-		return (x,y,z)
-	
-	def get_vector(self):
-		return (v_x, v_y, v_z)
+		return np.linalg.norm(np.array(self.location) - np.array(point))
 	
 def get_value(capture_get_origin, capture_get_vector, models, lights, iterations):
 	# Find Intersection Points For each Object and Camera Ray
@@ -178,7 +174,10 @@ def get_value(capture_get_origin, capture_get_vector, models, lights, iterations
 	for obj in models:
 		# If the Object intersects, then find intersection point(s)
 		if obj.does_intersect(capture_get_vector, capture_get_origin):
-			intersections.append(obj.intersection(capture_get_vector, capture_get_origin),obj.name)
+		
+			intersection_point = obj.intersection(capture_get_vector, capture_get_origin)
+			intersections.append(intersection(intersection_point, obj.name))
+			
 			num_intersect = num_intersect + 1
 		
 	if num_intersect > 0:
@@ -192,7 +191,7 @@ def get_value(capture_get_origin, capture_get_vector, models, lights, iterations
 				cache_ind = i
 			i = i + 1
 			
-		closest_intersection = intersections[i]
+		closest_intersection = intersections[cache_ind]
 			
 		# Get the found object
 		for obj in models:
@@ -201,23 +200,28 @@ def get_value(capture_get_origin, capture_get_vector, models, lights, iterations
 			
 		# Need to still loop through the lights and find the resulting value from the found obj/intersection
 		for obj in lights:
+		
 			# Reflect each light off the object
 				
 			# Determine the Dot Product
 				
 			# Get the Resulting Value
-			val = 0
+			
+			val = val + 0
 		
 		# Get the camera reflected values
 		# For first iteration setup the reflection from the camera
-		capture_reflect = intersection_obj.reflection(capture.get_vector, capture.get_origin)
+		capture_reflect = intersection_obj.reflection(capture_get_vector, capture.get_origin(), closest_intersection.location)
 		
-		#Check if there are reflections, if so call get_value again with the new vector
+		#Check if there are reflections, if so recurse on get_value
 		if iterations > 0:
 			#Get the reflected camera array
-			capture_reflect = intersection_obj.reflection(capture_get_vector, capture_get_origin)
+			capture_reflect = intersection_obj.reflection(capture_get_vector, capture_get_origin, closest_intersection.location)
+			reflect_origin = (capture_reflect.x, capture_reflect.y, capture_reflect.z)
+			reflect_vector = (capture_reflect.v_x, capture_reflect.v_y, capture_reflect.v_z)
 			#Get the value from the reflected camera array
-			val = val + get_value(capture_reflect.get_origin, capture_reflect.get_vector, models, lights, iterations - 1)
+			
+			val = val + get_value(reflect_origin, reflect_vector, models, lights, iterations - 1)
 	
 	return val
 		
@@ -254,6 +258,7 @@ for row in xrange(0, img.shape[0]):
 		print (row /(capture.width * capture.linearpixeldensity + 1)*100), "% Complete"
 		
 	for col in xrange(0, img.shape[1]):
-		
-		# Get the first value
-		val = get_value(capture.get_origin, capture.get_vector, models, lights, num_reflect)
+		camera_origin = np.array([capture.x - capture.width/2 + row / capture.linearpixeldensity, capture.y, capture.z - capture.height/2 + col / capture.linearpixeldensity])
+
+		# Get the value
+		img[row,col] = get_value(camera_origin, capture.get_vector(), models, lights, num_reflect)
