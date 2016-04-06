@@ -61,8 +61,8 @@ class sphere:
 		# Determine Intersection Point of camera_vector and sphere
 		dist_intersect_1 = (-(np.dot(camera_vector,(camera_origin-sphere_origin))) + math.sqrt(np.square(np.dot(camera_vector,(camera_origin-sphere_origin))) - (np.linalg.norm(camera_origin - sphere_origin) ** 2) + (self.radius ** 2)))
 		dist_intersect_2 = (-(np.dot(camera_vector,(camera_origin-sphere_origin))) - math.sqrt(np.square(np.dot(camera_vector,(camera_origin-sphere_origin))) - (np.linalg.norm(camera_origin - sphere_origin) ** 2) + (self.radius ** 2)))
-		#dist_intersect_final = min(dist_intersect_1, dist_intersect_2)
-		dist_intersect_final = dist_intersect_2
+		dist_intersect_final = min(dist_intersect_1, dist_intersect_2)
+		#dist_intersect_final = dist_intersect_2
 		#print dist_intersect_1, dist_intersect_2, dist_intersect_final
 		intersect_location = dist_intersect_final * camera_vector + camera_origin
 		
@@ -71,13 +71,13 @@ class sphere:
 	def reflection(self, vector, origin, intersection):
 	
 		#Return ray object reflected off sphere
+		vector = np.array(vector)
 		sphere_origin = (self.x, self.y, self.z)
 		sphere_normal = list(np.array(sphere_origin) - np.array(intersection))
 		sphere_normal = sphere_normal / np.linalg.norm(sphere_normal)
 		reflection = vector - (2 *(np.dot(vector, sphere_normal)) * sphere_normal)
 		
 		return ray(intersection[0],intersection[1],intersection[2],reflection[0],reflection[1],reflection[2])
-		
 	
 	def does_intersect(self, vector, origin):
 	
@@ -199,15 +199,44 @@ def get_value(capture_get_origin, capture_get_vector, models, lights, iterations
 				intersection_obj = obj
 			
 		# Need to still loop through the lights and find the resulting value from the found obj/intersection
+		val = np.array([0.0,0.0,0.0])
 		for obj in lights:
-		
+			
 			# Reflect each light off the object
+			light_origin = np.array([obj.x, obj.y, obj.z])
+			light_vector = np.array(closest_intersection.location) - list(np.array(light_origin))
+			light_vector = light_vector / np.linalg.norm(light_vector)
+			
+			#Determine if light is visible
+			#First get closest intersection
+			light_intersection = intersection_obj.intersection(light_vector, light_origin)
+			
+			#Then determine if closest intersection is the same intersection closest to camera
+			if abs(np.linalg.norm(light_intersection - np.array(closest_intersection.location))) < .001:
+				#If it is the same, do all the calculations
+				light_reflection = intersection_obj.reflection(light_vector, light_origin, closest_intersection.location)
+				light_reflection_vector = np.array([light_reflection.v_x, light_reflection.v_y, light_reflection.v_z])
+				#print light_reflection_vector, light_vector, closest_intersection.location
 				
-			# Determine the Dot Product
+				#print capture_get_vector
+				# Determine the light intensity
+				light_intensity = np.dot(np.array(light_reflection_vector), -np.array(capture_get_vector))* intersection_obj.emissivity * obj.intensity
 				
+				k = .2 #Constant to the exponential equation for scaling the output of the light/camera dot product
+				light_intensity = k * (((math.sqrt(4 * (k ** 2) + 1)+1)/(2 * k)) ** light_intensity) - k /(((math.sqrt(4 * (k ** 2) + 1)+1)/(2 * k)))
+				total_intensity = light_intensity + 0.1
+
+				val = np.array([total_intensity * obj.red,total_intensity * obj.green,total_intensity * obj.blue])
+			
+			else:
+				#Otherwise just add 0.1 for ambient lighting
+				total_intensity = 0.1
+			
+			#print out the full color values based on total_intensity
+			val = list(np.array(val) + np.array([total_intensity * obj.red,total_intensity * obj.green,total_intensity * obj.blue]))
+			#print val
 			# Get the Resulting Value
 			
-			val = val + 0
 		
 		# Get the camera reflected values
 		# For first iteration setup the reflection from the camera
@@ -221,8 +250,13 @@ def get_value(capture_get_origin, capture_get_vector, models, lights, iterations
 			reflect_vector = (capture_reflect.v_x, capture_reflect.v_y, capture_reflect.v_z)
 			#Get the value from the reflected camera array
 			
-			val = val + get_value(reflect_origin, reflect_vector, models, lights, iterations - 1)
+			val = np.array(val) + get_value(reflect_origin, reflect_vector, models, lights, iterations - 1)
 	
+	else:
+		#Set return value to 0's if no intercept
+		val = np.array([0.0,0.0,0.0])
+	
+	#Return the value
 	return val
 		
 # Initialize Models & Lighting object lists		
@@ -230,19 +264,19 @@ models = []
 lights = []
 		
 # Define Models
-models.append(sphere(2.0,3.0,10.0,0.0,1.0,"S1"))
-models.append(sphere(2.0,-3.0,10.0,0.0,1.0,"S2"))
+models.append(sphere(2.998,0.0,10.0,0.0,1.0,"S1"))
+#models.append(sphere(2.0,-3.0,10.0,0.0,1.0,"S2"))
 # models.append(plane(0.0,0.0,0.0,0.0,0.0,1.0,1.0,"P1"))
 
 # Define Lighting
-lights.append(lightsource(100.0,200.0,255.0,1.0,-2.1,0.1,5.0))
-lights.append(lightsource(100.0,255.0,200.0,1.0,2.1,-0.1,5.0))
+lights.append(lightsource(0.0,0.0,255.0,1.0,0.2,0.3,0.4))
+#lights.append(lightsource(0.0,0.0,200.0,1.0,2.1,15,1.0))
 
 # Define Capture Plane / Camera
-capture = captureplane(0.0,0.0,0.0, 10.0, 10.0, 10.0, 0.0, 1.0, 0.0)
+capture = captureplane(0.0,0.0,0.0, 10.0, 10.0, 20.0, 0.0, 1.0, 0.0)
 
 # Define Number of Reflections
-num_reflect = 1
+num_reflect = 0
 
 ####### Main Routine ########
 
@@ -254,7 +288,7 @@ img = np.zeros((capture.width * capture.linearpixeldensity + 1, capture.height *
 for row in xrange(0, img.shape[0]):
 
 	# Progress in 5% intervals (assuming width = height)
-	if row % round((capture.width * capture.linearpixeldensity + 1)/10) == 0:
+	if row % round((capture.width * capture.linearpixeldensity + 1)/100) == 0:
 		print (row /(capture.width * capture.linearpixeldensity + 1)*100), "% Complete"
 		
 	for col in xrange(0, img.shape[1]):
@@ -262,3 +296,6 @@ for row in xrange(0, img.shape[0]):
 
 		# Get the value
 		img[row,col] = get_value(camera_origin, capture.get_vector(), models, lights, num_reflect)
+		
+img_file = Image.fromarray(img)
+img_file.save('multiple_objects.jpeg')
